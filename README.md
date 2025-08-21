@@ -30,6 +30,7 @@ Now you can drag and drop your `.html` file into the page for parsing.
 - Work on resolving **CORS issues** so that the app can fully support drag-and-drop functionality even when opened directly from the file system.
 - Add more robust error handling for invalid or incomplete HTML.
 - Improve UI/UX for a smoother parsing experience.
+- Would convert the vanila js to React js 
 
 ---
 
