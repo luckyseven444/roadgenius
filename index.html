@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8">
+      <title>Link Analyzer</title>
+      <link rel="stylesheet" href="/src/main.css">
+   </head>
+   <body>
+      <h2>Link Analyzer</h2>
+      <form id="analyzeForm">
+         <textarea id="htmlInput" placeholder="Paste your HTML here OR type/paste a URL... (you can also drop an .html file here)" rows="6"></textarea>
+         <input type="text" id="keyword" name="keyword" placeholder="Put the keyword" required>
+         <button type="submit">Analyze</button>
+      </form>
+      <div id="status"></div>
+      <section>
+         <h3>Analysis Result</h3>
+         <table id="resultTable">
+            <thead>
+               <tr>
+                  <th>Metric</th>
+                  <th>Value</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
+      </section>
+      <section>
+         <h3>Top Links</h3>
+         <table id="topLinksTable">
+            <thead>
+               <tr>
+                  <th>Link Text</th>
+                  <th>Count</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
+      </section>
+      <section>
+         <h3>Elements Containing Anchors</h3>
+         <table id="containerTable">
+            <thead>
+               <tr>
+                  <th>Element</th>
+                  <th>Anchor Count</th>
+               </tr>
+            </thead>
+            <tbody></tbody>
+         </table>
+      </section>
+      <!-- bring in your analyzer logic -->
+      <script src="src/analyzer.js"></script> 
+      <script>
+         const textarea = document.getElementById("htmlInput");
+         const form = document.getElementById("analyzeForm");
+         const statusDiv = document.getElementById("status");
+         
+         // Drag & Drop for HTML file
+         textarea.addEventListener("dragover", (e) => {
+           e.preventDefault();
+           textarea.classList.add("dragover");
+         });
+         
+         textarea.addEventListener("dragleave", () => {
+           textarea.classList.remove("dragover");
+         });
+         
+         textarea.addEventListener("drop", (e) => {
+           e.preventDefault();
+           textarea.classList.remove("dragover");
+         
+           const file = e.dataTransfer.files[0];
+           if (file && file.type.includes("html")) {
+             statusDiv.innerHTML = `<p class="loading">Reading dropped file...</p>`;
+             const reader = new FileReader();
+             reader.onload = () => {
+               textarea.value = reader.result;
+               statusDiv.innerHTML = `<p class="loading">File loaded into textarea!</p>`;
+             };
+             reader.onerror = () => {
+               statusDiv.innerHTML = `<p class="error">Error reading file.</p>`;
+             };
+             reader.readAsText(file);
+           } else {
+             statusDiv.innerHTML = `<p class="error">Please drop a valid .html file.</p>`;
+           }
+         });
+         
+         // Form submit handler
+         form.addEventListener("submit", async function(e) {
+           e.preventDefault();
+         
+           const textInput = textarea.value.trim();
+           const keyword = document.getElementById("keyword").value.trim();
+           statusDiv.innerHTML = "";
+           if (!keyword || !textInput) {
+             statusDiv.innerHTML = `<p class="error">Please provide HTML or a URL, and a keyword.</p>`;
+             return;
+           }
+         
+           let htmlString = "";
+         
+           if (/^https?:\/\//i.test(textInput)) {
+             // URL case
+             try {
+               statusDiv.innerHTML = `<p class="loading">Fetching HTML from URL...</p>`;
+               const response = await fetch(textInput);
+               htmlString = await response.text();
+               statusDiv.innerHTML = `<p class="loading">Fetched successfully!</p>`;
+             } catch (err) {
+               statusDiv.innerHTML = `<p class="error">Error fetching URL: ${err.message}</p>`;
+               return;
+             }
+           } else {
+             // Raw HTML (typed, pasted, or file-loaded)
+             htmlString = textInput;
+           }
+         
+           //analyzeHTML from analyzer.js
+           const result = analyzeHTML(htmlString, keyword);
+         
+           // ---- Update DOM ----
+           const resultBody = document.querySelector("#resultTable tbody");
+           resultBody.innerHTML = `
+             <tr><td>Exact Match ("${keyword}")</td><td>${result.exactMatch}</td></tr>
+             <tr><td>Contains "${keyword}")</td><td>${result.contains}</td></tr>
+           `;
+         
+           const topLinksBody = document.querySelector("#topLinksTable tbody");
+           topLinksBody.innerHTML = "";
+           result.topLinks.forEach(item => {
+             topLinksBody.innerHTML += `<tr><td>${item.text}</td><td>${item.count}</td></tr>`;
+           });
+         
+           const containerBody = document.querySelector("#containerTable tbody");
+           containerBody.innerHTML = "";
+           for (const [tag, count] of Object.entries(result.containerCounts)) {
+             containerBody.innerHTML += `<tr><td>${tag}</td><td>${count}</td></tr>`;
+           }
+         });
+      </script>
+   </body>
+</html>
